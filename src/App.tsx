@@ -6,12 +6,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Ghost, Skull, Video, Link as LinkIcon, AlertTriangle, Loader2, Sparkles, Share2, Copy, Check } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
-
-// Initialize Gemini
-const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
-const MODEL_NAME = 'gemini-2.5-flash';
-
 interface ScriptVersion {
   title: string;
   script: string;
@@ -45,11 +39,6 @@ export default function App() {
       return;
     }
 
-    if (!process.env.GEMINI_API_KEY) {
-      setError("Missing GEMINI_API_KEY. Add it to .env.local and restart the app.");
-      return;
-    }
-
     try {
       new URL(url);
     } catch {
@@ -68,60 +57,28 @@ export default function App() {
     }, 2500);
 
     try {
-      const prompt = `
-        I am providing a video link from a platform like Reddit, YouTube, X, TikTok, or Instagram: ${url}
-        
-        Your task:
-        1. Use your internal knowledge and search capabilities to understand the content of this video.
-        2. Based on the video's content, write 3 DIFFERENT versions of a horrific, scary, and shocking script.
-        3. Each script must be exactly one amazing paragraph.
-        4. Create a perfect, bone-chilling title for each script version.
-        5. IMPORTANT: The titles must use EASY, SIMPLE WORDS that are easy to understand.
-        
-        STYLE GUIDELINES (MANDATORY):
-        - TONE: Visceral, clinical, unsettling, and descriptive.
-        - VOCABULARY: Use words like "clinical silence", "violent, impossible strength", "pale, spasming hand", "raw scraping of bone", "defies every law of the living", "localized agony", "spectral remnant", "hollow pits".
-        - STRUCTURE: Start with a setting of eerie stillness or normalcy, introduce a sudden, unnatural movement or presence, and end with a bone-chilling realization or a final horrific action.
-        - FOCUS: Emphasize the "unnatural" behavior of the physical world or the dead.
-        
-        REFERENCE EXAMPLE:
-        "The clinical silence of the morgue is broken as a nurse slides a heavy steel tray into its cooling unit. Just as she begins to latch the door, the 'remains' inside surge with a violent, impossible strength. A pale, spasming hand shoots out from the gap, fingers clawing desperately against the metal frame in a deliberate grasp. It isn’t a post-mortem twitch; it is a conscious, predatory reach from a body that has no pulse. The raw scraping of bone against steel is enough to send the worker sprinting into the hall, leaving the door ajar for whatever just woke up in the dark."
-        
-        Return the response in JSON format:
-        {
-          "versions": [
-            { "title": "Simple Title 1", "script": "Horrific script 1..." },
-            { "title": "Simple Title 2", "script": "Horrific script 2..." },
-            { "title": "Simple Title 3", "script": "Horrific script 3..." }
-          ]
-        }
-      `;
-
-      const response = await genAI.models.generateContent({
-        model: MODEL_NAME,
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: {
-          responseMimeType: "application/json",
-          tools: [{ googleSearch: {} }] // Enable search to help find info about the video link
-        }
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
       });
 
-      const text = response.text;
-      if (text) {
-        const parsed = JSON.parse(text);
-        setResult(parsed);
-      } else {
-        throw new Error("The spirits were silent.");
+      const payload = await response.json();
+      if (!response.ok) {
+        const errorMessage = typeof payload?.error === 'string' ? payload.error : 'Request failed.';
+        throw new Error(errorMessage);
       }
+
+      setResult(payload as ScriptResult);
     } catch (err: unknown) {
       console.error(err);
       const message = err instanceof Error ? err.message : 'Unknown error';
       if (message.toLowerCase().includes('api key')) {
-        setError('Gemini rejected the API key. Update GEMINI_API_KEY in .env.local.');
-      } else if (message.toLowerCase().includes('404') || message.toLowerCase().includes('model')) {
-        setError(`Model ${MODEL_NAME} is unavailable. Try again in a moment.`);
+        setError('Gemini rejected the API key. Please verify the key permissions in Google AI Studio.');
+      } else if (message.toLowerCase().includes('quota')) {
+        setError('Gemini quota exceeded. Please try again later.');
       } else {
-        setError("The connection to the abyss was severed. Try another link.");
+        setError(message || 'The connection to the abyss was severed. Try another link.');
       }
     } finally {
       clearInterval(messageInterval);
