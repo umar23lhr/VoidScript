@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+@theme {
+  --color-void-black: #050505;
+  --color-blood-red: #8b0000;
+  --color-ghost-white: #f8f8f8;
+}
+
+body {
+  background-color: var(--color-void-black);
+  color: var(--color-ghost-white);
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+}
+
+.glitch-text {
+  text-shadow: 2px 0 #ff0000, -2px 0 #00ff00;
+  animation: glitch 2s infinite linear alternate-reverse;
+}
+
+@keyframes glitch {
+  0% { transform: translate(0); }
+  20% { transform: translate(-2px, 2px); }
+  40% { transform: translate(-2px, -2px); }
+  60% { transform: translate(2px, 2px); }
+  80% { transform: translate(2px, -2px); }
+  100% { transform: translate(0); }
+}
+
+.atmosphere-bg {
+  background: radial-gradient(circle at 50% 50%, #1a0000 0%, #050505 100%);
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+}
+
