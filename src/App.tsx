@@ -10,6 +10,7 @@ import { GoogleGenAI } from "@google/genai";
 
 // Initialize Gemini
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+const MODEL_NAME = 'gemini-2.5-flash';
 
 interface ScriptVersion {
   title: string;
@@ -44,6 +45,18 @@ export default function App() {
       return;
     }
 
+    if (!process.env.GEMINI_API_KEY) {
+      setError("Missing GEMINI_API_KEY. Add it to .env.local and restart the app.");
+      return;
+    }
+
+    try {
+      new URL(url);
+    } catch {
+      setError("That does not look like a valid URL. Paste the full video link.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setResult(null);
@@ -55,8 +68,6 @@ export default function App() {
     }, 2500);
 
     try {
-      const model = "gemini-3.1-pro-preview";
-      
       const prompt = `
         I am providing a video link from a platform like Reddit, YouTube, X, TikTok, or Instagram: ${url}
         
@@ -87,7 +98,7 @@ export default function App() {
       `;
 
       const response = await genAI.models.generateContent({
-        model: model,
+        model: MODEL_NAME,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: {
           responseMimeType: "application/json",
@@ -102,9 +113,16 @@ export default function App() {
       } else {
         throw new Error("The spirits were silent.");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError("The connection to the abyss was severed. Try another link.");
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      if (message.toLowerCase().includes('api key')) {
+        setError('Gemini rejected the API key. Update GEMINI_API_KEY in .env.local.');
+      } else if (message.toLowerCase().includes('404') || message.toLowerCase().includes('model')) {
+        setError(`Model ${MODEL_NAME} is unavailable. Try again in a moment.`);
+      } else {
+        setError("The connection to the abyss was severed. Try another link.");
+      }
     } finally {
       clearInterval(messageInterval);
       setLoading(false);
