@@ -4,7 +4,7 @@ import { GoogleGenAI } from '@google/genai';
 import path from 'path';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 
-const MODEL_NAME = 'gemini-2.5-flash';
+const MODEL_NAME = 'gemini-1.5-flash';
 
 function geminiApiPlugin(apiKey: string): Plugin {
   const genAI = new GoogleGenAI({ apiKey: apiKey || '' });
@@ -69,14 +69,26 @@ function geminiApiPlugin(apiKey: string): Plugin {
             }
           `;
 
-          const response = await genAI.models.generateContent({
+          const baseRequest = {
             model: MODEL_NAME,
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
             config: {
               responseMimeType: 'application/json',
-              tools: [{ googleSearch: {} }],
             },
-          });
+          };
+
+          let response;
+          try {
+            response = await genAI.models.generateContent({
+              ...baseRequest,
+              config: {
+                ...baseRequest.config,
+                tools: [{ googleSearch: {} }],
+              },
+            });
+          } catch {
+            response = await genAI.models.generateContent(baseRequest);
+          }
 
           const text = response.text;
           if (!text) {
@@ -90,7 +102,7 @@ function geminiApiPlugin(apiKey: string): Plugin {
           const message = error instanceof Error ? error.message : 'Unknown server error';
           res.statusCode = 500;
           res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify({ error: message }));
+          res.end(JSON.stringify({ error: `${message}. Check that Gemini API is enabled for this key in Google AI Studio.` }));
         }
       });
     },
@@ -101,7 +113,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
 
   return {
-    plugins: [react(), tailwindcss(), geminiApiPlugin(env.GEMINI_API_KEY)],
+    plugins: [react(), tailwindcss(), geminiApiPlugin(env.GEMINI_API_KEY || env.GOOGLE_API_KEY)],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

@@ -73,9 +73,7 @@ export default function App() {
     } catch (err: unknown) {
       console.error(err);
       const message = err instanceof Error ? err.message : 'Unknown error';
-      if (message.toLowerCase().includes('api key')) {
-        setError('Gemini rejected the API key. Please verify the key permissions in Google AI Studio.');
-      } else if (message.toLowerCase().includes('quota')) {
+      if (message.toLowerCase().includes('quota')) {
         setError('Gemini quota exceeded. Please try again later.');
       } else {
         setError(message || 'The connection to the abyss was severed. Try another link.');
